@@ -1,0 +1,17 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="jumbotron text-center">
+    <h1 class="display-4">Welcome to Student Portal</h1>
+    <p class="lead">This is a student management system that allows you to track your grades and manage your profile.</p>
+    <hr class="my-4">
+    {% if session.logged_in %}
+    <p>Go to your dashboard to see your grades and profile information.</p>
+    <a href="/dashboard" class="btn btn-primary btn-lg">Dashboard</a>
+    {% else %}
+    <p>Please login or sign up to access your portal.</p>
+    <a href="/login" class="btn btn-primary btn-lg me-2">Login</a>
+    <a href="/signup" class="btn btn-success btn-lg">Sign Up</a>
+    {% endif %}
+</div>
+{% endblock %}

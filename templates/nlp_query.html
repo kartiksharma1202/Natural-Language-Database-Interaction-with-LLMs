@@ -1,0 +1,180 @@
+<!-- templates/nlp_query.html -->
+{% extends 'base.html' %}
+
+{% block title %}Natural Language Query{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h2>Natural Language Query</h2>
+    <p class="lead">Ask questions about student data in plain English</p>
+    
+    <div class="card mb-4">
+        <div class="card-body">
+            <div class="mb-3">
+                <label for="nlQuery" class="form-label">Your question:</label>
+                <input type="text" class="form-control" id="nlQuery" 
+                    placeholder="e.g., 'Show me subjects with an A " 
+                    autocomplete="off">
+            </div>
+            <button id="submitQuery" class="btn btn-primary">Run Query</button>
+        </div>
+    </div>
+    
+    <div id="loadingIndicator" class="text-center my-4 d-none">
+        <div class="spinner-border text-primary" role="status">
+            <span class="visually-hidden">Loading...</span>
+        </div>
+        <p>Processing your query...</p>
+    </div>
+    
+    <div id="errorContainer" class="alert alert-danger d-none" role="alert"></div>
+    
+    <div id="resultContainer" class="d-none">
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5>Generated SQL</h5>
+            </div>
+            <div class="card-body">
+                <pre id="sqlQuery" class="bg-light p-3 rounded"></pre>
+            </div>
+        </div>
+        
+        <div class="card">
+            <div class="card-header">
+                <h5>Results</h5>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table id="resultsTable" class="table table-striped">
+                        <thead id="tableHead"></thead>
+                        <tbody id="tableBody"></tbody>
+                    </table>
+                </div>
+                <div id="noResults" class="alert alert-info d-none">No results found for this query.</div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="mt-4">
+        <h4>Example Questions</h4>
+        <div class="list-group">
+            <button class="list-group-item list-group-item-action example-query">Show average score</button>
+            <button class="list-group-item list-group-item-action example-query">Show me all grades for VLSI</button>
+            <button class="list-group-item list-group-item-action example-query">What is the average score in Computer Networking?</button>
+            <button class="list-group-item list-group-item-action example-query">Find students with grades above 90</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const queryInput = document.getElementById('nlQuery');
+        const submitBtn = document.getElementById('submitQuery');
+        const loadingIndicator = document.getElementById('loadingIndicator');
+        const errorContainer = document.getElementById('errorContainer');
+        const resultContainer = document.getElementById('resultContainer');
+        const sqlQuery = document.getElementById('sqlQuery');
+        const tableHead = document.getElementById('tableHead');
+        const tableBody = document.getElementById('tableBody');
+        const noResults = document.getElementById('noResults');
+        const exampleQueries = document.querySelectorAll('.example-query');
+        
+        // Add example query click handlers
+        exampleQueries.forEach(btn => {
+            btn.addEventListener('click', function() {
+                queryInput.value = this.textContent;
+                submitBtn.click();
+            });
+        });
+        
+        // Submit query
+        submitBtn.addEventListener('click', function() {
+            const query = queryInput.value.trim();
+            if (!query) return;
+            
+            // Reset UI
+            errorContainer.classList.add('d-none');
+            resultContainer.classList.add('d-none');
+            loadingIndicator.classList.remove('d-none');
+            
+            // Send request
+            fetch('/api/query', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ query: query })
+            })
+            .then(response => response.json())
+            .then(data => {
+                loadingIndicator.classList.add('d-none');
+                
+                if (data.error) {
+                    errorContainer.textContent = data.error;
+                    errorContainer.classList.remove('d-none');
+                    return;
+                }
+                
+                // Display SQL
+                sqlQuery.textContent = data.sql;
+                
+                // Display results
+                displayResults(data.results);
+                resultContainer.classList.remove('d-none');
+            })
+            .catch(error => {
+                loadingIndicator.classList.add('d-none');
+                errorContainer.textContent = "An error occurred: " + error.message;
+                errorContainer.classList.remove('d-none');
+            });
+        });
+        
+        // Handle Enter key press
+        queryInput.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                submitBtn.click();
+            }
+        });
+        
+        function displayResults(results) {
+            tableHead.innerHTML = '';
+            tableBody.innerHTML = '';
+            
+            if (results.columns && results.columns.length > 0) {
+                // Create header
+                const headerRow = document.createElement('tr');
+                results.columns.forEach(column => {
+                    const th = document.createElement('th');
+                    th.textContent = column;
+                    headerRow.appendChild(th);
+                });
+                tableHead.appendChild(headerRow);
+                
+                // Create rows
+                if (results.data && results.data.length > 0) {
+                    results.data.forEach(row => {
+                        const tr = document.createElement('tr');
+                        results.columns.forEach((col, index) => {
+                            const td = document.createElement('td');
+                            td.textContent = row[col] !== null ? row[col] : 'NULL';
+                            tr.appendChild(td);
+                        });
+                        tableBody.appendChild(tr);
+                    });
+                    noResults.classList.add('d-none');
+                } else {
+                    noResults.classList.remove('d-none');
+                }
+            } else if (results.affected_rows !== undefined) {
+                noResults.textContent = `Query completed successfully. ${results.affected_rows} row(s) affected.`;
+                noResults.classList.remove('d-none');
+            } else {
+                noResults.textContent = 'No results returned.';
+                noResults.classList.remove('d-none');
+            }
+        }
+    });
+</script>
+{% endblock %}
+
+<!-- templates/query_builder.html -->

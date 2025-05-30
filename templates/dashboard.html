@@ -1,0 +1,46 @@
+{% extends 'base.html' %}
+
+{% block title %}Dashboard{% endblock %}
+
+{% block content %}
+<h2>Welcome, {{ user.name if user.name else user.username }}</h2>
+<div class="row mb-4">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5>Profile Information</h5>
+                <a href="/update_profile" class="btn btn-sm btn-primary">Update Profile</a>
+            </div>
+            <div class="card-body">
+                <p><strong>Username:</strong> {{ user.username }}</p>
+                <p><strong>Email:</strong> {{ user.email }}</p>
+                <p><strong>Full Name:</strong> {{ user.name if user.name else 'Not set' }}</p>
+                <a href="/reset_password" class="btn btn-warning">Reset Password</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<h3>Your Grades</h3>
+<div class="row">
+    {% if grades %}
+        {% for grade in grades %}
+        <div class="col-md-3">
+            <div class="card grade-card {{ 'grade-a' if grade.grade_letter == 'A' else 'grade-b' if grade.grade_letter == 'B' else 'grade-c' }}">
+                <div class="card-header">
+                    <h5>{{ grade.subject }}</h5>
+                </div>
+                <div class="card-body">
+                    <h2 class="text-center">{{ grade.grade_letter }}</h2>
+                    <p class="text-center">{{ grade.score }}/{{ grade.max_score }} ({{ (grade.score/grade.max_score*100)|round(1) }}%)</p>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    {% else %}
+        <div class="col-12">
+            <div class="alert alert-info">No grades available yet.</div>
+        </div>
+    {% endif %}
+</div>
+{% endblock %}

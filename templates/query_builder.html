@@ -1,0 +1,171 @@
+{% extends 'base.html' %}
+
+{% block title %}SQL Query Builder{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h2>SQL Query Builder</h2>
+    <p class="lead">Run SQL queries directly on the database</p>
+    
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5>Database Schema</h5>
+        </div>
+        <div class="card-body">
+            <pre class="bg-light p-3 rounded">
+users: id (INT), username (VARCHAR), email (VARCHAR), password (VARCHAR), name (VARCHAR), created_at (TIMESTAMP)
+grades: id (INT), user_id (INT), subject (VARCHAR), score (FLOAT), max_score (FLOAT), grade_letter (VARCHAR), created_at (TIMESTAMP)
+
+Foreign keys:
+- grades.user_id references users.id
+            </pre>
+        </div>
+    </div>
+    
+    <div class="card mb-4">
+        <div class="card-body">
+            <div class="mb-3">
+                <label for="sqlQuery" class="form-label">SQL Query:</label>
+                <textarea class="form-control font-monospace" id="sqlQuery" rows="4" 
+                    placeholder="SELECT * FROM users" autocomplete="off"></textarea>
+                <div class="form-text">Note: Only SELECT queries are allowed for security reasons.</div>
+            </div>
+            <button id="runQuery" class="btn btn-primary">Run Query</button>
+        </div>
+    </div>
+    
+    <div id="sqlLoadingIndicator" class="text-center my-4 d-none">
+        <div class="spinner-border text-primary" role="status">
+            <span class="visually-hidden">Loading...</span>
+        </div>
+        <p>Executing query...</p>
+    </div>
+    
+    <div id="sqlErrorContainer" class="alert alert-danger d-none" role="alert"></div>
+    
+    <div id="sqlResultContainer" class="d-none">
+        <div class="card">
+            <div class="card-header">
+                <h5>Results</h5>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table id="sqlResultsTable" class="table table-striped">
+                        <thead id="sqlTableHead"></thead>
+                        <tbody id="sqlTableBody"></tbody>
+                    </table>
+                </div>
+                <div id="sqlNoResults" class="alert alert-info d-none">No results found for this query.</div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="mt-4">
+        <h4>Sample Queries</h4>
+        <div class="list-group">
+            <button class="list-group-item list-group-item-action sample-query">SELECT * FROM users</button>
+            <button class="list-group-item list-group-item-action sample-query">SELECT * FROM grades</button>
+            <button class="list-group-item list-group-item-action sample-query">SELECT u.username, g.subject, g.score, g.grade_letter FROM users u JOIN grades g ON u.id = g.user_id</button>
+            <button class="list-group-item list-group-item-action sample-query">SELECT subject, AVG(score) as average_score FROM grades GROUP BY subject</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const sqlQueryInput = document.getElementById('sqlQuery');
+        const runBtn = document.getElementById('runQuery');
+        const loadingIndicator = document.getElementById('sqlLoadingIndicator');
+        const errorContainer = document.getElementById('sqlErrorContainer');
+        const resultContainer = document.getElementById('sqlResultContainer');
+        const tableHead = document.getElementById('sqlTableHead');
+        const tableBody = document.getElementById('sqlTableBody');
+        const noResults = document.getElementById('sqlNoResults');
+        const sampleQueries = document.querySelectorAll('.sample-query');
+        
+        // Add sample query click handlers
+        sampleQueries.forEach(btn => {
+            btn.addEventListener('click', function() {
+                sqlQueryInput.value = this.textContent;
+            });
+        });
+        
+        // Run query
+        runBtn.addEventListener('click', function() {
+            const query = sqlQueryInput.value.trim();
+            if (!query) return;
+            
+            // Reset UI
+            errorContainer.classList.add('d-none');
+            resultContainer.classList.add('d-none');
+            loadingIndicator.classList.remove('d-none');
+            
+            // Send request
+            fetch('/api/run_sql', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ sql: query })
+            })
+            .then(response => response.json())
+            .then(data => {
+                loadingIndicator.classList.add('d-none');
+                
+                if (data.error) {
+                    errorContainer.textContent = data.error;
+                    errorContainer.classList.remove('d-none');
+                    return;
+                }
+                
+                // Display results
+                displayResults(data.results);
+                resultContainer.classList.remove('d-none');
+            })
+            .catch(error => {
+                loadingIndicator.classList.add('d-none');
+                errorContainer.textContent = "An error occurred: " + error.message;
+                errorContainer.classList.remove('d-none');
+            });
+        });
+        
+        function displayResults(results) {
+            tableHead.innerHTML = '';
+            tableBody.innerHTML = '';
+            
+            if (results.columns && results.columns.length > 0) {
+                // Create header
+                const headerRow = document.createElement('tr');
+                results.columns.forEach(column => {
+                    const th = document.createElement('th');
+                    th.textContent = column;
+                    headerRow.appendChild(th);
+                });
+                tableHead.appendChild(headerRow);
+                
+                // Create rows
+                if (results.data && results.data.length > 0) {
+                    results.data.forEach(row => {
+                        const tr = document.createElement('tr');
+                        results.columns.forEach((col, index) => {
+                            const td = document.createElement('td');
+                            td.textContent = row[col] !== null ? row[col] : 'NULL';
+                            tr.appendChild(td);
+                        });
+                        tableBody.appendChild(tr);
+                    });
+                    noResults.classList.add('d-none');
+                } else {
+                    noResults.classList.remove('d-none');
+                }
+            } else if (results.affected_rows !== undefined) {
+                noResults.textContent = `Query completed successfully. ${results.affected_rows} row(s) affected.`;
+                noResults.classList.remove('d-none');
+            } else {
+                noResults.textContent = 'No results returned.';
+                noResults.classList.remove('d-none');
+            }
+        }
+    });
+</script>
+{% endblock %}
