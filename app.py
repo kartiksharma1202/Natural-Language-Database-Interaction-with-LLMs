@@ -13,7 +13,7 @@ app = Flask(__name__)
 app.config['SECRET_KEY'] = os.urandom(24)
 app.config['MYSQL_HOST'] = 'localhost'
 app.config['MYSQL_USER'] = 'root'  # MySQL username
-app.config['MYSQL_PASSWORD'] = 'Kartik@1997'  #MySQL password
+app.config['MYSQL_PASSWORD'] = 'xxxxxx'  #MySQL password
 app.config['MYSQL_DB'] = 'flask_auth_db'
 app.config['MYSQL_CURSORCLASS'] = 'DictCursor'
 
